@@ -1,0 +1,23 @@
+
+    int minScoreVariable(StateMachine theMachine, MachineState theState, Role theRole, Move action, int alpha, int beta, int depth) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException{
+
+//        List<Role> roles = theMachine.getRoles();
+//        // assume one opponent
+//        Role opponent = roles.get(1 - roles.indexOf(theRole));
+//        for (Move action1 : actions) {
+//            List<Move> jointMove = new ArrayList<>();
+//            if (theRole == roles.get(0)) {
+//                jointMove.add(0, action);
+//                jointMove.add(1, action1);
+//            } else {
+//                jointMove.add(0, action1);
+//                jointMove.add(1, action);
+//            }
+//            MachineState newstate = theMachine.getNextState(theState, jointMove);
+//            int result = maxScoreVariable(theMachine, newstate, theRole, alpha, beta, depth + 1);
+//            beta = Math.min(beta, result);
+//            if (beta <= alpha) {
+//                return alpha;
+//            }
+//        }
+//        return beta;
