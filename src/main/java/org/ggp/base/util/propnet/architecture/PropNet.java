@@ -81,7 +81,6 @@ public final class PropNet
 
 	/** References to every GoalProposition in the PropNet, indexed by role. */
 	private final Map<Role, Set<Proposition>> goalPropositions;
-    private final Set<Proposition> allGoalPropositions;
 
 	/** A reference to the single, unique, InitProposition. */
 	private final Proposition initProposition;
@@ -122,10 +121,6 @@ public final class PropNet
 		this.terminalProposition = recordTerminalProposition();
 		this.legalInputMap = makeLegalInputMap();
 
-        this.allGoalPropositions = new HashSet<>();
-        for (Set<Proposition> s : this.goalPropositions.values()) {
-            this.allGoalPropositions.addAll(s);
-        }
 	}
 
 	public List<Role> getRoles()
@@ -192,10 +187,6 @@ public final class PropNet
 	{
 		return goalPropositions;
 	}
-    public Set<Proposition> getAllGoalPropositions()
-    {
-        return allGoalPropositions;
-    }
 
 	/**
 	 * Getter method. A reference to the single, unique, InitProposition.
@@ -342,6 +333,7 @@ public final class PropNet
 				goalPropositions.put(theRole, new HashSet<Proposition>());
 			}
 			goalPropositions.get(theRole).add(proposition);
+            proposition.calculateGoal();
 		}
 
 		return goalPropositions;

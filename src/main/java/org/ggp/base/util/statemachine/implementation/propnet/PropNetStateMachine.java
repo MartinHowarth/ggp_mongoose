@@ -1,11 +1,8 @@
 package org.ggp.base.util.statemachine.implementation.propnet;
 
-import org.ggp.base.util.gdl.grammar.GdlConstant;
-import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 import org.ggp.base.util.propnet.architecture.components.Proposition;
-import org.ggp.base.util.propnet.architecture.components.Transition;
 import org.ggp.base.util.statemachine.MachineState;
 import org.ggp.base.util.statemachine.Move;
 import org.ggp.base.util.statemachine.Role;
@@ -14,7 +11,6 @@ import org.ggp.base.util.statemachine.exceptions.MoveDefinitionException;
 import org.ggp.base.util.statemachine.exceptions.TransitionDefinitionException;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class PropNetStateMachine extends SamplePropNetStateMachine {
     /**
@@ -35,8 +31,7 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
      * proposition true for that role, then you should throw a
      * GoalDefinitionException because the goal is ill-defined.
      */
-    @Override
-    public int getGoal(MachineState state, Role role)
+    public int getGoalOld(MachineState state, Role role)
             throws GoalDefinitionException {
 //        return state.getGoalForRole(role);
 //        // TODO store the value of the goal in the proposition - probably faster?
@@ -48,6 +43,34 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
             }
         }
         throw new GoalDefinitionException(state, role);
+    }
+
+    public int getGoal(MachineState state, Role role)
+            throws GoalDefinitionException {
+        applyState(state);
+
+        int val = getGoal(role);
+        if (val == -1) {
+            throw new GoalDefinitionException(state, role);
+        }
+        else {
+            return val;
+        }
+    }
+
+    public int getGoal(Role role)
+            throws GoalDefinitionException {
+        for (Proposition p : propNet.getGoalPropositions().get(role)) {
+            if (p.getValue()) {
+                return getGoalValue(p);
+            }
+        }
+        return -1;
+    }
+
+    protected int getGoalValue(Proposition goalProposition)
+    {
+        return goalProposition.goal;
     }
 
     /**
@@ -101,6 +124,12 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
             throws MoveDefinitionException {
         if (verbose) {System.out.println("Prop net getting legal moves.");}
         applyState(state);
+        return getLegalMoves(role, verbose);
+    }
+
+    public List<Move> getLegalMoves(Role role, boolean verbose)
+            throws MoveDefinitionException {
+        if (verbose) {System.out.println("Prop net getting legal moves.");}
 
         List<Move> result = new ArrayList<>();
         Map<GdlSentence, Proposition> inputPropositions = propNet.getInputPropositions();
@@ -119,6 +148,45 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
     @Override
     public List<Move> getLegalMoves(MachineState state, Role role) throws MoveDefinitionException {
         return getLegalMoves(state, role, false);
+    }
+
+    public List<Move> getLegalMoves(Role role) throws MoveDefinitionException {
+        return getLegalMoves(role, false);
+    }
+
+    /**
+     * Returns a random move from among the possible legal moves for the
+     * given role in the given state.
+     */
+    @Override
+    public Move getRandomMove(MachineState state, Role role) throws MoveDefinitionException
+    {
+        List<Move> legals = getLegalMoves(state, role);
+        return legals.get(new Random().nextInt(legals.size()));
+    }
+
+    /**
+     * Returns a random move from among the possible legal moves for the
+     * given role in the given state.
+     */
+    public Move getRandomMove(Role role) throws MoveDefinitionException
+    {
+        List<Move> legals = getLegalMoves(role);
+        return legals.get(new Random().nextInt(legals.size()));
+    }
+
+    /**
+     * Returns a random joint move from among all the possible joint moves in
+     * the given state.
+     */
+    public List<Move> getRandomJointMove() throws MoveDefinitionException
+    {
+        List<Move> random = new ArrayList<Move>();
+        for (Role role : getRoles()) {
+            random.add(getRandomMove(role));
+        }
+
+        return random;
     }
 
     /**
@@ -163,6 +231,19 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
         return getStateFromBase();
     }
 
+    @Override
+    public MachineState performDepthCharge(MachineState state, final int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
+        int nDepth = 0;
+        applyState(state);
+        while(!isTerminal(state)) {
+            nDepth++;
+            state = getNextState(state, getRandomJointMove(state));
+        }
+        if(theDepth != null)
+            theDepth[0] = nDepth;
+        return state;
+    }
+
     protected void propagatePropNet(boolean verbose) {
         if (verbose) {System.out.println("Propagating prop net.");}
         for (Proposition p : ordering) {
@@ -177,73 +258,4 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
     protected void propagatePropNet() {
         propagatePropNet(false);
     }
-
-    protected void propagatePropNetOld() {
-        System.out.println("Propagating prop net.");
-        // Start from all input, init and base propositions and work through outputs.
-        // Stop at terminal, goal and base propositions (rather, stop at their transition gate).
-
-        // First update base propositions with the current value of their input transition gate.
-        for (Proposition p : propNet.getBasePropositions().values())
-        {
-            // Transition gates have the value of the view node that is their input.
-            p.setValue(p.getSingleInput().getValue());
-
-        }
-
-        // Then push each propositions value into their outputs recursively.
-        Set<Component> propagationInitiators = new HashSet<>();
-        propagationInitiators.add(propNet.getInitProposition());
-        propagationInitiators.addAll(propNet.getInputPropositions().values().stream().collect(Collectors.toList()));
-
-        propagationInitiators.addAll(propNet.getBasePropositions().values().stream().collect(Collectors.toList()));
-
-        propagateListOfPropositions(propagationInitiators);
-
-
-    }
-
-    private void propagateListOfPropositions(Set<Component> props) {
-        for (Component proposition : props) {
-            // Stop propagation at terminal proposition.
-            if (proposition == propNet.getTerminalProposition()) {
-                System.out.println("Stopping at terminal node.");
-                continue;
-            }
-
-            // Stop propagation at goal propositions.
-            if (propNet.getAllGoalPropositions().contains(proposition)) {
-                System.out.println("Stopping at goal node: " + proposition);
-                continue;
-            }
-
-            if (proposition.getOutputs().size() == 0) {
-                System.out.println("Missed end node: " + proposition);
-            }
-
-            // Propositions have logic gates as outputs.
-            for (Component logicGate : proposition.getOutputs()) {
-                // Stop propagation at transitions.
-                if (logicGate instanceof Transition) {
-                    System.out.println("Stopping at transition gate node: " + logicGate);
-                    continue;
-                }
-
-                // Pass in values to the logic gate until it has received enough inputs.
-                if (logicGate.receiveInput()) {
-                    logicGate.resetCounter();
-                    // Once we have enough information to fully calculate the gate, update its outputs.
-                    for (Component out : logicGate.getOutputs()) {
-                        out.setValue(logicGate.getValue());
-                        if (logicGate.getValue() && out instanceof Proposition) {
-                            System.out.println("True: " + out);
-                        }
-                    }
-                    // Finally continue propagation from these propositions.
-                    propagateListOfPropositions(logicGate.getOutputs());
-                }
-            }
-        }
-    }
-
 }

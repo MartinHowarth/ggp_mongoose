@@ -1,5 +1,7 @@
 package org.ggp.base.util.propnet.architecture.components;
 
+import org.ggp.base.util.gdl.grammar.GdlConstant;
+import org.ggp.base.util.gdl.grammar.GdlRelation;
 import org.ggp.base.util.gdl.grammar.GdlSentence;
 import org.ggp.base.util.propnet.architecture.Component;
 
@@ -7,12 +9,15 @@ import org.ggp.base.util.propnet.architecture.Component;
  * The Proposition class is designed to represent named latches.
  */
 @SuppressWarnings("serial")
-public final class Proposition extends Component
+public class Proposition extends Component
 {
 	/** The name of the Proposition. */
 	private GdlSentence name;
 	/** The value of the Proposition. */
 	private boolean value;
+
+	// TODO move this to separate GoalProposition. Couldn't get it to drop in nicely elsewhere, so got lazy.
+	public Integer goal;
 
 	/**
 	 * Creates a new Proposition with name <tt>name</tt>.
@@ -74,6 +79,13 @@ public final class Proposition extends Component
 	/**
 	 * @see org.ggp.base.util.propnet.architecture.Component#toString()
 	 */
+
+    public void calculateGoal() {
+        GdlRelation relation = (GdlRelation) getName();
+        GdlConstant constant = (GdlConstant) relation.get(1);
+        goal = Integer.parseInt(constant.toString());
+    }
+
 	@Override
 	public String toString()
 	{
