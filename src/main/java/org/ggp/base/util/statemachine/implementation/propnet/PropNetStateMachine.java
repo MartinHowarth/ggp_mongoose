@@ -21,6 +21,10 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
     public boolean isTerminal(MachineState state) {
         applyState(state);
 
+        return isTerminal();
+    }
+
+    public boolean isTerminal() {
         return propNet.getTerminalProposition().getValue();
     }
 
@@ -31,20 +35,6 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
      * proposition true for that role, then you should throw a
      * GoalDefinitionException because the goal is ill-defined.
      */
-    public int getGoalOld(MachineState state, Role role)
-            throws GoalDefinitionException {
-//        return state.getGoalForRole(role);
-//        // TODO store the value of the goal in the proposition - probably faster?
-        applyState(state);
-
-        for (Proposition p : propNet.getGoalPropositions().get(role)) {
-            if (p.getValue()) {
-                return getGoalValue(p);
-            }
-        }
-        throw new GoalDefinitionException(state, role);
-    }
-
     public int getGoal(MachineState state, Role role)
             throws GoalDefinitionException {
         applyState(state);
@@ -113,7 +103,7 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
         propagatePropNet();
     }
 
-    protected void applyState(MachineState state) {
+    public void applyState(MachineState state) {
         applyState(state, false);
     }
 
@@ -189,6 +179,19 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
         return random;
     }
 
+    public List<List<Move>> getLegalJointMoves() throws MoveDefinitionException
+    {
+        List<List<Move>> legals = new ArrayList<List<Move>>();
+        for (Role role : getRoles()) {
+            legals.add(getLegalMoves(role));
+        }
+
+        List<List<Move>> crossProduct = new ArrayList<List<Move>>();
+        crossProductLegalMoves(legals, crossProduct, new LinkedList<Move>());
+
+        return crossProduct;
+    }
+
     /**
      * Computes the next state given state and the list of moves.
      */
@@ -208,6 +211,17 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
      */
     public MachineState getNextState(List<Move> moves)
             throws TransitionDefinitionException {
+        nextState(moves);
+
+        return getStateFromBase();
+    }
+
+
+    /**
+     * Puts the prop net into the next state after given moves are made.
+     * @param moves
+     */
+    public void nextState(List<Move> moves) {
         // Set all input propositions to false.
         for (Proposition p : propNet.getInputPropositions().values()) {
             p.setValue(false);
@@ -227,21 +241,25 @@ public class PropNetStateMachine extends SamplePropNetStateMachine {
         for (Proposition p : propNet.getBasePropositions().values()) {
             p.setValue(p.getSingleInput().getValue());
         }
-
-        return getStateFromBase();
     }
 
     @Override
     public MachineState performDepthCharge(MachineState state, final int[] theDepth) throws TransitionDefinitionException, MoveDefinitionException {
         int nDepth = 0;
         applyState(state);
-        while(!isTerminal(state)) {
+//        while(!isTerminal(state)) {
+//            nDepth++;
+//            getNextState(state, getRandomJointMove(state));
+//        }
+        while(!isTerminal()) {
             nDepth++;
-            state = getNextState(state, getRandomJointMove(state));
+            nextState(getRandomJointMove());
         }
         if(theDepth != null)
             theDepth[0] = nDepth;
-        return state;
+        System.out.println(nDepth);
+        return getStateFromBase();
+//        return state;
     }
 
     protected void propagatePropNet(boolean verbose) {

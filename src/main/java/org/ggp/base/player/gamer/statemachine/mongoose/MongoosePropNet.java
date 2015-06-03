@@ -39,6 +39,40 @@ public class MongoosePropNet extends PropNetGamer {
 
     @Override
     public void stateMachineMetaGame(long timeout) throws TransitionDefinitionException, MoveDefinitionException, GoalDefinitionException {
+        PropNetStateMachine theMachine = getStateMachine();
+        Role theRole = getRole();
+        MachineState currentState = getCurrentState();
+
+
+        List<Move> jointMove = theMachine.getLegalJointMoves(getCurrentState()).get(0);
+
+        MachineState nextState1 = theMachine.getNextState(getCurrentState(), jointMove);
+        List<Move> jointMove2 = theMachine.getLegalJointMoves(nextState1).get(0);
+        nextState1 = theMachine.getNextState(nextState1, jointMove2);
+
+        theMachine.applyState(getCurrentState());
+        theMachine.nextState(jointMove);
+        theMachine.nextState(jointMove2);
+
+        MachineState nextState2 = theMachine.getStateFromBase();
+
+        if (nextState1.toString().equals(nextState2.toString())) {
+            System.out.println("States are same.");
+        }
+        else {
+            System.out.println("States are different.");
+            System.out.println(nextState1.getContents());
+            System.out.println(nextState2.getContents());
+        }
+
+        while (!theMachine.isTerminal()) {
+            theMachine.nextState(theMachine.getLegalJointMoves().get(0));
+        }
+
+        MachineState nextState3 = theMachine.getStateFromBase();
+
+        System.out.println(nextState3);
+
     }
 
     @Override
